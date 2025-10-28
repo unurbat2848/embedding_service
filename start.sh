@@ -32,16 +32,31 @@ if [ $? -ne 0 ]; then
     pip install -r requirements.txt
 fi
 
+# Set default port if not already set
+if [ -z "$EMBEDDING_SERVICE_PORT" ]; then
+    export EMBEDDING_SERVICE_PORT=8000
+fi
+
+if [ -z "$EMBEDDING_SERVICE_HOST" ]; then
+    export EMBEDDING_SERVICE_HOST="0.0.0.0"
+fi
+
 # Start the service
 echo "[3/3] Starting embedding service..."
 echo ""
-echo "Service will start on: http://localhost:8000"
+echo "Service will start on: http://localhost:${EMBEDDING_SERVICE_PORT}"
+echo "Host: ${EMBEDDING_SERVICE_HOST}"
 echo ""
 echo "Note: First startup will download the model from HuggingFace"
 echo "      This is a one-time ~80MB download."
+echo ""
+echo "To use a custom port, set EMBEDDING_SERVICE_PORT before running:"
+echo "  export EMBEDDING_SERVICE_PORT=8080"
+echo "  ./start.sh"
 echo ""
 echo "Press Ctrl+C to stop the service"
 echo "==============================================="
 echo ""
 
-uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --reload
+# Run using Python script (uses environment variables)
+python embedding_service.py

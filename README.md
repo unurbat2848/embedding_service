@@ -24,15 +24,40 @@ pip install -r requirements.txt
 
 ### 2. Run the Service
 
-```bash
-# Development mode (auto-reload)
-uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --reload
+#### Option A: Using Startup Scripts (Recommended)
 
-# Production mode
-uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --workers 2
+```bash
+# Linux/Mac
+./start.sh
+
+# Windows
+start.bat
 ```
 
-The service will be available at: `http://localhost:8000`
+#### Option B: Using Environment Variables
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env to set custom port/host (optional)
+# Then run:
+python embedding_service.py
+```
+
+#### Option C: Direct with Custom Port
+
+```bash
+# Using environment variables
+export EMBEDDING_SERVICE_PORT=8080
+export EMBEDDING_SERVICE_HOST=0.0.0.0
+python embedding_service.py
+
+# Or using uvicorn directly
+uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The service will be available at: `http://localhost:8000` (or your custom port)
 
 ### 3. Test the Service
 
@@ -145,7 +170,18 @@ Calculate similarity between query and multiple texts
 
 ## Production Deployment
 
-### Option 1: Run as Systemd Service (Linux)
+### Option 1: Deploy to Render.com (Recommended for Cloud)
+
+See **[RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)** for complete deployment guide.
+
+Quick start:
+1. Push code to GitHub/GitLab
+2. Create new Web Service on Render
+3. Use build command: `pip install -r requirements.txt`
+4. Use start command: `uvicorn embedding_service:app --host 0.0.0.0 --port $PORT`
+5. Deploy and get your URL: `https://your-service.onrender.com`
+
+### Option 2: Run as Systemd Service (Linux)
 
 Create `/etc/systemd/system/acur-embedding.service`:
 
@@ -159,7 +195,9 @@ Type=simple
 User=www-data
 WorkingDirectory=/path/to/chatbot-acur-wp-plugin/embedding_service
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --workers 2
+Environment="EMBEDDING_SERVICE_HOST=0.0.0.0"
+Environment="EMBEDDING_SERVICE_PORT=8000"
+ExecStart=/path/to/venv/bin/python embedding_service.py
 Restart=always
 
 [Install]
@@ -171,6 +209,7 @@ Start service:
 sudo systemctl daemon-reload
 sudo systemctl start acur-embedding
 sudo systemctl enable acur-embedding
+sudo systemctl status acur-embedding
 ```
 
 ### Option 2: Run with Docker
@@ -186,13 +225,26 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY embedding_service.py .
 
-CMD ["uvicorn", "embedding_service:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default environment variables (can be overridden)
+ENV EMBEDDING_SERVICE_HOST=0.0.0.0
+ENV EMBEDDING_SERVICE_PORT=8000
+
+CMD ["python", "embedding_service.py"]
 ```
 
 Build and run:
 ```bash
+# Build image
 docker build -t acur-embedding .
+
+# Run with default port 8000
 docker run -d -p 8000:8000 --name acur-embedding acur-embedding
+
+# Run with custom port
+docker run -d -p 8080:8080 \
+  -e EMBEDDING_SERVICE_PORT=8080 \
+  --name acur-embedding \
+  acur-embedding
 ```
 
 ### Option 3: Run with PM2 (Node.js Process Manager)
@@ -204,13 +256,46 @@ pm2 save
 pm2 startup
 ```
 
-## Configuration in WordPress
+## Configuration
 
-Update the embedding service URL in your WordPress plugin:
+### Environment Variables
+
+The service supports the following environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EMBEDDING_SERVICE_HOST` | `0.0.0.0` | Host to bind the service to. Use `127.0.0.1` for local-only access |
+| `EMBEDDING_SERVICE_PORT` | `8000` | Port number for the service |
+
+**Example usage:**
+
+```bash
+# Linux/Mac
+export EMBEDDING_SERVICE_PORT=8080
+export EMBEDDING_SERVICE_HOST=127.0.0.1
+python embedding_service.py
+
+# Windows (Command Prompt)
+set EMBEDDING_SERVICE_PORT=8080
+set EMBEDDING_SERVICE_HOST=127.0.0.1
+python embedding_service.py
+
+# Windows (PowerShell)
+$env:EMBEDDING_SERVICE_PORT=8080
+$env:EMBEDDING_SERVICE_HOST="127.0.0.1"
+python embedding_service.py
+```
+
+### WordPress Plugin Configuration
+
+Update the embedding service URL in your WordPress plugin to match your configuration:
 
 ```php
 // In wp-config.php or plugin settings
 define('ACUR_EMBEDDING_SERVICE_URL', 'http://localhost:8000');
+
+// If using custom port
+define('ACUR_EMBEDDING_SERVICE_URL', 'http://localhost:8080');
 
 // Or programmatically
 ACURCB_Embeddings::set_config('embedding_service_url', 'http://localhost:8000');
@@ -224,7 +309,11 @@ ACURCB_Matcher_V1::set_config('embedding_service_url', 'http://localhost:8000');
 # Check if port 8000 is already in use
 netstat -an | grep 8000
 
-# Use a different port
+# Use a different port with environment variable
+export EMBEDDING_SERVICE_PORT=8001
+python embedding_service.py
+
+# Or use uvicorn directly
 uvicorn embedding_service:app --port 8001
 ```
 

@@ -9,7 +9,12 @@ This service provides:
 - /info endpoint: Model information
 
 Usage:
+    # Default port 8000
     uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --reload
+
+    # Custom port via environment variable
+    export EMBEDDING_SERVICE_PORT=8080
+    python embedding_service.py
 """
 
 from fastapi import FastAPI, HTTPException
@@ -20,6 +25,7 @@ from typing import List, Optional
 import numpy as np
 import logging
 import time
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -27,6 +33,11 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Configuration from environment variables
+# Render.com sets PORT automatically, so check that first
+HOST = os.getenv('EMBEDDING_SERVICE_HOST', '0.0.0.0')
+PORT = int(os.getenv('PORT', os.getenv('EMBEDDING_SERVICE_PORT', '8000')))
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -264,6 +275,8 @@ async def calculate_similarity(query: str, texts: List[str]):
 
 
 # Run with: uvicorn embedding_service:app --host 0.0.0.0 --port 8000 --reload
+# Or run with environment variables: python embedding_service.py
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logger.info(f"Starting ACUR Embedding Service on {HOST}:{PORT}")
+    uvicorn.run(app, host=HOST, port=PORT)
