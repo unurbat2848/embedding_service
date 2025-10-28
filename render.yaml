@@ -8,9 +8,6 @@ services:
     envVars:
       - key: EMBEDDING_SERVICE_HOST
         value: 0.0.0.0
-      - key: EMBEDDING_SERVICE_PORT
-        fromService:
-          property: port
       - key: PYTHON_VERSION
         value: 3.10.0
     healthCheckPath: /health
